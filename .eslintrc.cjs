@@ -78,6 +78,7 @@ module.exports = {
       files: [".eslintrc.cjs"],
       env: {
         node: true,
+        browser: true
       },
     },
   ],
