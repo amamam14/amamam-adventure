@@ -1,52 +1,44 @@
 // app/routes/babi.tsx
-import { useFetcher, useLoaderData } from '@remix-run/react';
 import {
   Button,
   Container,
   Tabs,
   Tab,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
   Dialog,
   DialogTitle,
   DialogContent,
   TextField,
   DialogActions,
+  Box,
+  FormControl,
+  Select,
+  MenuItem,
 } from '@mui/material';
-import { useState } from 'react';
-import { json } from '@remix-run/node';
-import { getClient } from '../utils/db.server';
-
-export async function loader() {
-  const db = await getClient();
-  const [eats, loo, sleeps] = await Promise.all([
-    db.collection('eats').find().sort({ createdAt: -1 }).toArray(),
-    db.collection('loo').find().sort({ createdAt: -1 }).toArray(),
-    db.collection('sleeps').find().sort({ createdAt: -1 }).toArray(),
-  ]);
-
-  return json({ eats, loo, sleeps });
-}
+import { useEffect, useState } from 'react';
 
 export default function Babi() {
-  const { eats, loo, sleeps } = useLoaderData();
-  const fetcher = useFetcher();
-  const [tab, setTab] = useState(0);
   const [volume, setVolume] = useState('');
+  const [looType, setLooType] = useState('poopoo');
   const [open, setOpen] = useState(false);
+  const [openLoo, setOpenLoo] = useState(false);
+  const [tabIndex, setTabIndex] = useState(0);
+  const [logs, setLogs] = useState<Record<string, any[]>>({});
+
+  const types = ['eats', 'loo', 'sleeps'];
 
   const handleClick = async (type) => {
     if (type === 'eats') {
       setOpen(true);
+    } else if (type === 'loo') {
+      setOpenLoo(true);
     } else {
       await fetch(`/api/${type}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type }),
       });
+
+      fetchLogs(types[tabIndex]).then((data) => setLogs(groupByDate(data)));
     }
   };
 
@@ -57,19 +49,43 @@ export default function Babi() {
       body: JSON.stringify({ volume }),
     });
 
-    fetcher.submit(
-      { type: 'eats', volume },
-      { method: 'post', action: '/api/eats' }
-    );
     setOpen(false);
     setVolume('');
+
+    fetchLogs(types[tabIndex]).then((data) => setLogs(groupByDate(data)));
   };
 
-  const getFilteredData = () => {
-    if (tab === 0) return eats;
-    if (tab === 1) return loo;
-    return sleeps;
+  const handleSubmitLoo = async () => {
+    await fetch('/api/loo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ looType }),
+    });
+
+    setOpenLoo(false);
+    setLooType('poopoo');
+
+    fetchLogs(types[tabIndex]).then((data) => setLogs(groupByDate(data)));
   };
+
+  const fetchLogs = async (type: string) => {
+    const response = await fetch(`/api/${type}`);
+    const data = await response.json();
+    return data[type];
+  };
+
+  const groupByDate = (data: any[]) => {
+    return data?.reduce((acc, item) => {
+      const date = new Date(item.createdAt).toLocaleDateString();
+      acc[date] = acc[date] || [];
+      acc[date].push(item);
+      return acc;
+    }, {} as Record<string, any[]>);
+  };
+
+  useEffect(() => {
+    fetchLogs(types[tabIndex]).then((data) => setLogs(groupByDate(data)));
+  }, [tabIndex]);
 
   return (
     <Container className="flex flex-col gap-4 p-4 items-center">
@@ -96,29 +112,53 @@ export default function Babi() {
           Sleep
         </Button>
       </div>
-      <Tabs value={tab} onChange={(_, newValue) => setTab(newValue)}>
-        <Tab label="Eat" />
-        <Tab label="Loo" />
-        <Tab label="Sleep" />
-      </Tabs>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Created At</TableCell>
-            {tab === 0 && <TableCell>Volume (ml)</TableCell>}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {getFilteredData().map((entry) => (
-            <TableRow key={entry._id}>
-              <TableCell>
-                {new Date(entry.createdAt).toLocaleString()}
-              </TableCell>
-              {tab === 0 && <TableCell>{entry.volume} ml</TableCell>}
-            </TableRow>
+      <Box>
+        <Tabs
+          value={tabIndex}
+          onChange={(_, newValue) => setTabIndex(newValue)}
+          centered
+        >
+          <Tab label="Eat" />
+          <Tab label="Loo" />
+          <Tab label="Sleep" />
+        </Tabs>
+
+        <Box sx={{ p: 2 }}>
+          {Object.entries(logs).map(([date, entries]) => (
+            <div key={date} className="border p-4 rounded-lg shadow-md">
+              <h2 className="text-xl font-bold mb-2">{date}</h2>
+              <table className="w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border p-2">Date</th>
+                    {types[tabIndex] === 'eats' && (
+                      <th className="border p-2">Volume (ml)</th>
+                    )}
+                    {types[tabIndex] === 'loo' && (
+                      <th className="border p-2">Type</th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((entry) => (
+                    <tr key={entry._id} className="border">
+                      <td className="border p-2">
+                        {new Date(entry.createdAt).toLocaleTimeString()}
+                      </td>
+                      {types[tabIndex] === 'eats' && (
+                        <td className="border p-2">{entry.volume || '-'}</td>
+                      )}
+                      {types[tabIndex] === 'loo' && (
+                        <td className="border p-2">{entry.type || '-'}</td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ))}
-        </TableBody>
-      </Table>
+        </Box>
+      </Box>
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>Enter Volume (ml)</DialogTitle>
         <DialogContent>
@@ -133,6 +173,28 @@ export default function Babi() {
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
           <Button onClick={handleSubmit} variant="contained" color="primary">
+            Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openLoo} onClose={() => setOpenLoo(false)}>
+        <DialogTitle>Change Diaper</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth>
+            <Select
+              labelId="dropdown-label"
+              value={looType}
+              onChange={(e) => setLooType(e.target.value)}
+            >
+              <MenuItem value="poopoo">Poopoo</MenuItem>
+              <MenuItem value="weewee">Weewee</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenLoo(false)}>Cancel</Button>
+          <Button onClick={handleSubmitLoo} variant="contained" color="primary">
             Submit
           </Button>
         </DialogActions>
