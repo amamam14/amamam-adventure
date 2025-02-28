@@ -17,10 +17,6 @@ export async function action({ request }) {
   const data = await request.json();
   const { volume, type, createdAt, id } = data;
 
-  if (!volume || isNaN(volume)) {
-    return json({ error: 'Invalid volume' }, { status: 400 });
-  }
-
   if (request.method === 'DELETE') {
     if (!id) {
       return json({ error: 'Missing entry ID' }, { status: 400 });
@@ -31,7 +27,7 @@ export async function action({ request }) {
 
   const newEntry = {
     type,
-    volume: Number(volume),
+    volume: volume ? Number(volume) : 0,
     createdAt: new Date(createdAt),
     updatedAt: new Date(),
   };

@@ -75,6 +75,7 @@ export default function Babi() {
     setOpen(false);
     setVolume('');
     setEditingEntry(null);
+    setEditMode(false);
 
     fetchLogs(types[tabIndex]).then((data) => setLogs(groupByDate(data)));
   };
@@ -94,6 +95,7 @@ export default function Babi() {
     setOpenLoo(false);
     setLooType('poopoo');
     setEditingEntry(null);
+    setEditMode(false);
 
     fetchLogs(types[tabIndex]).then((data) => setLogs(groupByDate(data)));
   };
@@ -307,7 +309,16 @@ export default function Babi() {
 
                 <TextField
                   type="datetime-local"
-                  value={selectedDate.toISOString().slice(0, 16)}
+                  value={
+                    selectedDate
+                      ? new Date(
+                          selectedDate.getTime() -
+                            selectedDate.getTimezoneOffset() * 60000
+                        )
+                          .toISOString()
+                          .slice(0, 16)
+                      : ''
+                  }
                   onChange={(e) => setSelectedDate(new Date(e.target.value))}
                   fullWidth
                   InputLabelProps={{ shrink: true }}
@@ -316,7 +327,17 @@ export default function Babi() {
             </DialogContent>
 
             <DialogActions>
-              <Button onClick={() => setOpen(false)}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  setSelectedDate(new Date());
+                  setEditingEntry(null);
+                  setEditMode(false);
+                  setVolume('');
+                  setOpen(false);
+                }}
+              >
+                Cancel
+              </Button>
               <Button
                 onClick={handleSubmit}
                 variant="contained"
@@ -345,7 +366,16 @@ export default function Babi() {
 
                 <TextField
                   type="datetime-local"
-                  value={selectedDate.toISOString().slice(0, 16)}
+                  value={
+                    selectedDate
+                      ? new Date(
+                          selectedDate.getTime() -
+                            selectedDate.getTimezoneOffset() * 60000
+                        )
+                          .toISOString()
+                          .slice(0, 16)
+                      : ''
+                  }
                   onChange={(e) => setSelectedDate(new Date(e.target.value))}
                   fullWidth
                   InputLabelProps={{ shrink: true }}
@@ -353,7 +383,17 @@ export default function Babi() {
               </Box>
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setOpenLoo(false)}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  setSelectedDate(new Date());
+                  setEditingEntry(null);
+                  setEditMode(false);
+                  setVolume('');
+                  setOpenLoo(false);
+                }}
+              >
+                Cancel
+              </Button>
               <Button
                 onClick={handleSubmitLoo}
                 variant="contained"
