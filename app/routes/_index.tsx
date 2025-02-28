@@ -107,12 +107,18 @@ export default function Babi() {
   };
 
   const groupByDate = (data: any[]) => {
-    return data?.reduce((acc, item) => {
+    const grouped = data?.reduce((acc, item) => {
       const date = new Date(item.createdAt).toLocaleDateString();
       acc[date] = acc[date] || [];
       acc[date].push(item);
       return acc;
     }, {} as Record<string, any[]>);
+
+    return Object.fromEntries(
+      Object.entries(grouped).sort(
+        ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
+      )
+    );
   };
 
   const handleAuthSubmit = () => {
